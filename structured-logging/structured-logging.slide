@@ -1,0 +1,528 @@
+The Hunt for a Logger Interface
+10 June 2015
+
+Chris Hines
+chris@cs-guy.com
+@chris_csguy
+
+
+
+* Logging
+
+
+* Why do we log?
+
+We log so we can find out what our programs are doing when we aren't looking.
+
+- Help diagnosing incorrect behavior.
+- Provide an audit trail of actions taken.
+- Course grain performance data.
+
+Especially important for server programs that run continuously and autonomously.
+
+
+
+* Logging styles
+
+- Traditional
+- Structured
+
+
+
+* Traditional logging (glog style)
+
+Each logging function accepts a fmt.Printf style format string followed by the values to format.
+
+	log.Infof("A group of %v walrus emerges from the ocean", 10)
+	log.Warningf("OMG: the group's number increased to %v!", 122)
+	log.Errorf("OMG: The ice breaks! %d walrus left.", 100)
+
+	log.Info("common: Common phrase, other=should be logged always, logged with common phrases.")
+	log.Info("common: Common phrase, other=should be logged always, me too.")
+
+
+
+* glog output
+
+	I0522 19:59:41.842000   11996 main.go:18]
+	 A group of 10 walrus emerges from the ocean
+
+	W0522 19:59:41.843000   11996 main.go:19]
+	 OMG: the group's number increased to 122!
+
+	E0522 19:59:41.843000   11996 main.go:20]
+	 OMG: The ice breaks! 100 walrus left.
+
+	I0522 19:59:41.843000   11996 main.go:22]
+	 common: Common phrase, other=should be logged always, logged with common phrases.
+
+	I0522 19:59:41.843000   11996 main.go:23]
+	 common: Common phrase, other=should be logged always, me too.
+
+
+
+* Traditional logging
+
+- Ad hoc strings
+- Inconsistent and hard-coded formating
+- Easily parsed by people
+- Not easily parsed by computer
+
+
+
+* Structured Logging (log15 style)
+
+Each logging function accepts a message followed by alternating keys and values.
+
+	log15.Info("A group of walrus emerges from the ocean", "animal", "walrus", "size", 10)
+	log15.Warn("The group's number increased tremendously!", "omg", true, "number", 122)
+	log15.Error("The ice breaks!", "omg", true, "number", 100)
+
+Store common fields in `clog`.
+
+	clog := log15.New("common", "this is a common field", "other", "I also should be logged always")
+
+	clog.Info("Logged with common and other field")
+	clog.Info("Me too")
+
+
+
+* JSON output
+
+	{"animal":"walrus","lvl":3,"msg":"A group of walrus emerges from the ocean",
+	 "size":10,"t":"2015-05-21T20:51:53.594-04:00"}
+
+	{"lvl":2,"msg":"The group's number increased tremendously!","number":122,
+	 "omg":"true","t":"2015-05-21T20:51:53.595-04:00"}
+
+	{"lvl":1,"msg":"The ice breaks!","number":100,
+	 "omg":"true","t":"2015-05-21T20:51:53.595-04:00"}
+
+	{"common":"this is a common field","lvl":3,"msg":"Logged with common and other field",
+	 "other":"I also should be logged always","t":"2015-05-21T20:51:53.596-04:00"}
+
+	{"common":"this is a common field","lvl":3,"msg":"Me too",
+	 "other":"I also should be logged always","t":"2015-05-21T20:51:53.596-04:00"}
+
+
+
+* Logfmt output
+
+	t=2015-05-21T20:48:06-0400 lvl=info msg="A group of walrus emerges from the ocean"
+	 animal=walrus size=10
+
+	t=2015-05-21T20:48:06-0400 lvl=warn msg="The group's number increased tremendously!"
+	 omg=true number=122
+
+	t=2015-05-21T20:48:06-0400 lvl=eror msg="The ice breaks!"
+	 omg=true number=100
+
+	t=2015-05-21T20:48:06-0400 lvl=info msg="Logged with common and other field"
+	 common="this is a common field" other="I also should be logged always"
+
+	t=2015-05-21T20:48:06-0400 lvl=info msg="Me too"
+	 common="this is a common field" other="I also should be logged always"
+
+
+
+* Structured Logging
+
+- Contextual key/value pairs
+- Regular and pluggable formatting
+- Easily parsed by computer
+- Less easily parsed by people
+
+
+
+* Personal history with logging packages
+
+Traditional
+
+- [[http://localhost:6060/pkg/log][log]]
+- [[http://localhost:6060/pkg/github.com/golang/glog][glog]]
+
+Structured
+
+- [[http://localhost:6060/pkg/gopkg.in/inconshreveable/log15.v2][log15]] (current)
+- [[http://localhost:6060/pkg/github.com/go-kit/kit/log][gokit/log]] (future?)
+
+
+
+* Gokit
+
+Gokit is a distributed programming toolkit for microservices in the modern enterprise.
+
+Proposed by Peter Bourgon at FOSDEM in February 2015.
+
+Under construction
+
+Contributors welcome!
+
+github.com/go-kit/kit
+
+
+
+* Gokit log package
+
+- Chooses structured logging
+- Transport agnostic
+- Format agnostic
+
+The remainder of this presentation is about the journey of designing this package.
+
+
+
+* But first ...
+
+
+
+* Interfaces
+
+
+
+* A good interface is
+
+- Small
+- Composable
+
+
+
+* Small interfaces are
+
+- Easier to implement
+- More likely to have many useful implementations
+
+
+
+* Composable interfaces
+
+- Enable reuse
+- Discourage coupling 
+
+
+
+* io.Writer
+
+	type Writer interface {
+		Write(p []byte) (n int, err error)
+	}
+
+- Small? Yes, only one method.
+- Is it Composable?
+
+
+
+* io.Writer
+
+Yes!
+
+	var buf bytes.Buffer
+	...
+	var wr io.Writer = &buf
+	if test.chunked {
+		wr = internal.NewChunkedWriter(wr)
+	}
+	if test.compressed {
+		buf.WriteString("Content-Encoding: gzip\r\n")
+		wr = gzip.NewWriter(wr)
+	}
+	...
+	chunk := bytes.Repeat([]byte{'x'}, 1000)
+	for i := 0; i < 1000; i++ {
+		...
+		wr.Write(chunk)
+	}
+
+.caption from net/http/response_test.go
+
+
+
+* io.Writer
+
+Implemented by 99 types in my GOPATH. Some examples:
+
+	*bytes.Buffer
+	*gzip.Writer
+	*sha1.digest
+	*tls.Conn
+	*base64.encoder
+	*io.multiWriter
+	*io.PipeWriter
+	ioutil.devNull
+	net.Conn
+	net.pipe
+	*net.TCPConn
+	*net.UDPConn
+	*net.UnixConn
+	http.ResponseWriter
+	*os.File
+	*tabwriter.Writer
+
+
+
+* Interfaces
+
+Good interfaces define the shape of endlessly composable building blocks.
+
+.image images/LegoGopherCrop.jpg _ 450
+
+.caption _Lego_Gopher_ by Andrew Gerrand
+
+
+
+* Logging Interfaces
+
+
+
+* package log
+
+	type Logger struct { ... }                 // Not an interface!
+
+	func New(out io.Writer, prefix string, flag int) *Logger
+
+	// flag controls date, time, µs, UTC, caller
+
+	// Log
+	func (l *Logger) Print(v ...interface{})
+	func (l *Logger) Printf(format string, v ...interface{})
+	func (l *Logger) Println(v ...interface{})
+
+	// Log and call os.Exit(1)
+	func (l *Logger) Fatal(v ...interface{})
+	func (l *Logger) Fatalf(format string, v ...interface{})
+	func (l *Logger) Fatalln(v ...interface{})
+
+	// Log and panic
+	func (l *Logger) Panic(v ...interface{})
+	func (l *Logger) Panicf(format string, v ...interface{})
+	func (l *Logger) Panicln(v ...interface{})
+
+	func (l *Logger) Output(calldepth int, s string) error
+
+
+
+* package glog
+
+Only a global logger, and `init()` registers flags.
+
+	func Info(args ...interface{})
+	func InfoDepth(depth int, args ...interface{})
+	func Infof(format string, args ...interface{})
+	func Infoln(args ...interface{})
+	
+	func Warning(args ...interface{})
+	...
+	func Error(args ...interface{})
+	...
+	func Exit(args ...interface{})    // calls os.Exit(1)
+	...
+	func Fatal(args ...interface{})   // calls os.Exit(255)
+	...
+	
+	func Flush()    // Fixed 256KB buffer, flushed every 30 seconds, holds mutex
+	
+	type Verbose
+		func V(level Level) Verbose
+		func (v Verbose) Info(args ...interface{})
+		func (v Verbose) Infof(format string, args ...interface{})
+		func (v Verbose) Infoln(args ...interface{})
+
+
+
+* package log15
+
+	type Logger interface {                   // only implemented by one type
+	    New(ctx ...interface{}) Logger
+
+	    SetHandler(h Handler)
+
+	    Debug(msg string, ctx ...interface{})
+	    Info(msg string, ctx ...interface{})
+	    Warn(msg string, ctx ...interface{})
+	    Error(msg string, ctx ...interface{})
+	    Crit(msg string, ctx ...interface{})
+	}
+
+	type Handler interface {                  // this is the awesome sauce
+		Log(r *Record) error
+	}
+
+	type Record struct {                      // not as awesome
+		Time     time.Time
+		Lvl      Lvl
+		Msg      string
+		Ctx      []interface{}
+		CallPC   [1]uintptr
+		KeyNames RecordKeyNames
+	}
+
+
+
+* log15 Handlers
+
+	// Sinks
+	DiscardHandler()
+	ChannelHandler(recs chan<- *Record)
+	StreamHandler(wr io.Writer, fmtr Format)
+	FileHandler(path string, fmtr Format)
+	NetHandler(network, addr string, fmtr Format)
+	
+	// Decorators
+	SyncHandler(h Handler)
+	BufferedHandler(bufSize int, h Handler)
+	EscalateErrHandler(h log.Handler)
+
+	// Routers
+	FailoverHandler(hs ...Handler)
+	MultiHandler(hs ...Handler)
+
+	// Filters
+	FilterHandler(fn func(r *Record) bool, h Handler)
+	MatchFilterHandler(key string, value interface{}, h Handler)
+	LvlFilterHandler(maxLvl Lvl, h Handler)
+
+
+
+* Why go-kit/log?
+
+It was not a perfect fit for the Gokit logging RFC.
+
+- _Log_SHALL_include_severity_as_a_k/v_pair_and_allow_setting_it_through_the_same_mechanism_as_any_other_k/v_pair._
+
+To address some known annoyances with log15.
+
+- `Handler` and `Format` interfaces not orthogonal.
+
+	type Handler interface {
+		Log(r *Record) error
+	}
+
+	type Format interface {
+		Format(r *Record) []byte
+	}
+
+- The `Record` struct kept growing.
+
+
+
+* Take 1
+
+	func New(keyvals ...interface{}) Logger
+
+	type Logger interface {
+		New(keyvals ...interface{}) Logger
+		SetHandler(h Handler)
+		Log(keyvals ...interface{})
+	}
+
+	type Handler interface {
+		Handle(keyvals ...interface{}) error
+	}
+
+	type Encoder interface {
+		Encode(keyvals ...interface{}) ([]byte, error)
+	}
+
+	func Writer(w io.Writer, enc Encoder) Handler
+
+Gets rid of severity methods and `Record`.
+`Handler` and `Encoder` still have too much overlap.
+
+
+
+* Take 1a
+
+	type Logger interface {
+		With(...Field) Logger
+		Log(string) error
+	}
+
+	type Field struct {
+		Key   string
+		Value interface{}
+	}
+
+Gets rid of `Handler` and `Format`/`Encoder`.
+But is cumbersome to use:
+
+	logger.With([]log.Field{
+		{"request.size", 1024},
+		{"response.code", 200},
+		{"response.duration", 42 * time.Millisecond},
+		{"headers", headers}}...,
+	).Log("OK")
+
+
+
+* Take 2
+
+	type Logger interface {
+		With(keyvals ...interface{}) Logger
+		Log(message string, keyvals ...interface{}) error
+	}
+
+Gets rid of type `Field` and adopts log15's variadic alternating key/value style.
+
+	logger.Log("OK",
+		"request.size", 1024,
+		"response.code", 200,
+		"response.duration", 42 * time.Millisecond,
+		"headers", headers,
+	)
+
+
+
+* Take 3
+
+	type Logger interface {
+		With(keyvals ...interface{}) Logger
+		Log(keyvals ...interface{}) error
+	}
+
+Gets rid of initial `msg` argument because:
+
+- Gokit is intended as a base library for projects to build on.
+- A message field can easily be provided by a wrapper layer implementing project logging policies.
+
+This change allowed us to see the next simplification.
+
+
+* Take 4
+
+`With` can be implemented as a separate function wrapping any Logger.
+
+	type Logger interface {
+		Log(keyvals ...interface{}) error
+	}
+
+	func With(logger Logger, keyvals ...interface{}) Logger
+
+Which leaves us with a *one*method*Logger*interface!*
+
+
+
+* go-kit/log
+	
+	type Logger interface {
+		Log(keyvals ...interface{}) error
+	}
+
+	func With(logger Logger, keyvals ...interface{}) Logger
+	func NewJSONLogger(w io.Writer) Logger
+	func NewLogfmtLogger(w io.Writer) Logger
+
+	type Valuer func() interface{}
+		func Caller(depth int) Valuer
+		func Timestamp(t func() time.Time) Valuer
+
+	type Levels struct {
+		Debug Logger
+		Info  Logger
+		Error Logger
+	}
+	func NewLevels(base Logger, options ...LevelOption) Levels
+	type LevelOption
+		func DebugLevelValue(value string) LevelOption
+		func ErrorLevelValue(value string) LevelOption
+		func InfoLevelValue(value string) LevelOption
+		func LevelKey(key string) LevelOption
