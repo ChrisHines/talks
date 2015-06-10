@@ -7,6 +7,20 @@ chris@cs-guy.com
 
 
 
+* Introduction
+
+_This_song_is_called_"Alice's_Restaurant."_It's_about_Alice,_and_the_Restaurant,_but_"Alice's_Restaurant"_is_not_the_name_of_the_restaurant,_That's_just_the_name_of_the_song._That's_why_I_call_the_song_"Alice's_Restaurant."_
+
+.caption from "Alice's Restaurant" by Arlo Guthrie
+
+
+* My Version
+
+This presentation is called "The Hunt for a Logger Interface." It's about Logging and Interface Design. Logging is not the main topic. It's just the context for the story. That's why I call the presentation "The Hunt for a Logger Interface."
+
+
+
+
 * Logging
 
 
@@ -168,15 +182,18 @@ github.com/go-kit/kit
 - Transport agnostic
 - Format agnostic
 
-The remainder of this presentation is about the journey of designing this package.
+But first...
+
+
+* Remember Alice...
 
 
 
-* But first ...
+* Remember Interfaces...
 
 
 
-* Interfaces
+* This is a story about interfaces...
 
 
 
@@ -526,3 +543,14 @@ Which leaves us with a *one*method*Logger*interface!*
 		func ErrorLevelValue(value string) LevelOption
 		func InfoLevelValue(value string) LevelOption
 		func LevelKey(key string) LevelOption
+
+
+
+* So what?
+
+Strive for small, composable interfaces.
+
+Simple isn't easy. You have to work for it.
+
+Good collaberators help.
+
