@@ -1,0 +1,94 @@
+Non-Orthogonal Choices in Go
+20 Jan 2016
+
+Chris Hines
+chris@cs-guy.com
+@chris_csguy
+
+
+
+* Dimension
+
+The minimum number of coordinates needed to describe a point in space.
+
+- One dimension—a line—one coordinate; distance along the line.
+- Two dimensions—a surface—two coordinates; (x, y) or (ϕ, ρ).
+- Three dimensions—a volume—three coordinates; (x, y, z) or (length, width, depth).
+
+* Orthogonality
+
+- N orthogonal vectors describe an N-dimensional space.
+- Orthogonal vectors are linearly independent—none of them can be built from a combination of the others.
+- Basis vectors can be scaled and added to reach any point in the space they describe.
+
+* Orthogonality in Software
+
+Software is more orthogonal when features or components are:
+
+- Decoupled—changes in one don't affect the others.
+- Minimal—their functionality does not overlap.
+- Composable—they are easily combined in useful ways.
+
+* Orthogonality in Go
+
+In 2010 Rob Pike listed Go's principles as:
+
+- Simple
+- *Orthogonal*
+- Succinct
+- Safe
+
+* Is Go Orthogonal?
+
+Rob Pike called out the following orthogonalities in Go:
+
+- Contants (nearly) orthogonal to type system.
+- Methods orthogonal to types.
+- Interface types orthogonal to concrete types.
+- Visibility orthogonal to type.
+- Concurrency orthogonal to everything else.
+- Functions orthogonal to variable location (yay! closures).
+
+* But are there exceptions?
+
+* No!  —  Go doesn't have exceptions.
+
+* panic("talk failed")
+
+* recover()
+
+* It turns out ... Go is not perfectly orthogonal.
+
+* Two forms of polymorphism
+
+- Interfaces
+- Function types
+
+* Multiple ways to synchronize
+
+- Channels
+- import "sync"
+- import "sync/atomic"
+
+* Others?
+
+- Yes.
+- Excercise for the reader.
+
+* Polymorphism
+
+* Interfaces
+
+.play iface_poly/iface_poly.go /^func main/,/^func ioCopy/
+
+* ioCopy(dst io.Writer, src io.Reader) (written int64, err error)
+
+.code iface_poly/iface_poly.go /^	buf :=/,/^	return/
+
+* ioCopy(dst io.Writer, src io.Reader) (written int64, err error)
+
+An optimization
+
+.code iface_poly/iface_poly.go /^	// If the reader/,/^	}/
+
+* Function types
