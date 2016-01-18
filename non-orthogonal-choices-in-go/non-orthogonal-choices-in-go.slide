@@ -112,6 +112,7 @@ Choose functions at runtime
 - Inversion of control
 - Polymorphism
 - Dynamic dispatch
+- Strategy pattern
 
 Helps reduce coupling
 
