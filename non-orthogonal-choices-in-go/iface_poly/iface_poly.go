@@ -1,69 +1,40 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 )
 
-func newReader(s string) func(p []byte) (n int, err error) {
-	return func(p []byte) (n int, err error) {
-		n = copy(p, s)
-		s = s[n:]
-		if len(s) == 0 {
-			err = io.EOF
-		}
-		return n, err
-	}
-}
-
-type readerFunc func(p []byte) (n int, err error)
-
-func (f readerFunc) Read(p []byte) (n int, err error) {
-	return f(p)
-}
-
 func main() {
-	data := []io.Reader{
-		strings.NewReader("Hello, world!\n"),
-		bytes.NewReader([]byte{71, 111, 111, 100, 98, 121, 101, 46, 10}),
-		readerFunc(newReader("Once more unto the breach!\n")),
+	readers := []io.Reader{
+		strings.NewReader("Hello, world!\nHello, again!"),
+		mustOpen("iface_poly/shakespeare.txt"),
 	}
 
-	for _, r := range data {
-		ioCopy(os.Stdout, r)
+	for _, r := range readers {
+		s := bufio.NewScanner(r) // scans lines of text
+		for s.Scan() {
+			fmt.Print("--", s.Text())
+		}
+		fmt.Println()
+		if r, ok := r.(io.Closer); ok {
+			r.Close() // close the reader if needed
+		}
+		if err := s.Err(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 }
 
-func ioCopy(dst io.Writer, src io.Reader) (written int64, err error) {
-	// If the reader has a WriteTo method, use it to do the copy.
-	// Avoids an allocation and a copy.
-	if wt, ok := src.(io.WriterTo); ok {
-		return wt.WriteTo(dst)
+// mustOpen returns an opened file or panics
+func mustOpen(path string) *os.File {
+	f, err := os.Open(path)
+	if err != nil {
+		panic(err)
 	}
-	buf := make([]byte, 32*1024)
-	for {
-		nr, er := src.Read(buf) // HL
-		if nr > 0 {
-			nw, ew := dst.Write(buf[0:nr]) // HL
-			written += int64(nw)
-			if ew != nil {
-				err = ew
-				break
-			}
-			if nr != nw {
-				err = io.ErrShortWrite
-				break
-			}
-		}
-		if er == io.EOF {
-			break
-		}
-		if er != nil {
-			err = er
-			break
-		}
-	}
-	return written, err
+	return f
 }

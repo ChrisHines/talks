@@ -21,7 +21,9 @@ The minimum number of coordinates needed to describe a point in space.
 - Orthogonal vectors are linearly independent—none of them can be built from a combination of the others.
 - Basis vectors can be scaled and added to reach any point in the space they describe.
 
-* Orthogonality in Software
+.html Coord_XY.svg
+
+* Orthogonality in software
 
 Software is more orthogonal when features or components are:
 
@@ -38,16 +40,16 @@ In 2010 Rob Pike listed Go's principles as:
 - Succinct
 - Safe
 
-* Is Go Orthogonal?
+* Is Go orthogonal?
 
 Rob Pike called out the following orthogonalities in Go:
 
-- Contants (nearly) orthogonal to type system.
+- Constants (nearly) orthogonal to type system.
 - Methods orthogonal to types.
 - Interface types orthogonal to concrete types.
 - Visibility orthogonal to type.
 - Concurrency orthogonal to everything else.
-- Functions orthogonal to variable location (yay! closures).
+- Functions orthogonal to variable location (easy closures, yay!).
 
 * But are there exceptions?
 
@@ -59,36 +61,74 @@ Rob Pike called out the following orthogonalities in Go:
 
 * It turns out ... Go is not perfectly orthogonal.
 
-* Two forms of polymorphism
+* But no practical programming language is.
 
-- Interfaces
-- Function types
+* Beware the Turing tarpit!
 
-* Multiple ways to synchronize
+* Non-orthogonality creates choices
+
+- Overlapping features allow more than one way to solve a problem.
+- Not all choices are equally good.
+- Choose the right tool for the problem.
+
+* Three ways to count
+
+.code counting/counting.go /^func forloop/,/^}/
+.code counting/counting.go /^func gotoloop/,/^}/
+.code counting/counting.go /^func recurse/,/^}/
+
+* Counting three ways
+
+.play counting/counting.go /^func main/,/^}/
+
+* These are not hard choices
+
+- Choosing a looping construct is tactical.
+- The impact is almost always local to a function.
+
+* More difficult choices
+
+Dynamic behavior
+
+- Interface values
+- Function values
+
+Concurrency control
 
 - Channels
 - import "sync"
 - import "sync/atomic"
 
-* Others?
+* These choices are strategic
 
-- Yes.
-- Excercise for the reader.
+- Often influence the public API, or
+- Impact many functions in the package
+- Or both
 
-* Polymorphism
+* Dynamic behavior
+
+Choose functions at runtime
+
+- Inversion of control
+- Polymorphism
+- Dynamic dispatch
+
+Helps reduce coupling
+
+Provides opportunities for extension and reuse
 
 * Interfaces
 
-.play iface_poly/iface_poly.go /^func main/,/^func ioCopy/
+.play iface_poly/iface_poly.go /^func main/,/^func mustOpen/
 
 * ioCopy(dst io.Writer, src io.Reader) (written int64, err error)
 
-.code iface_poly/iface_poly.go /^	buf :=/,/^	return/
+#.code iface_poly/iface_poly.go /^	buf :=/,/^	return/
 
 * ioCopy(dst io.Writer, src io.Reader) (written int64, err error)
 
 An optimization
 
-.code iface_poly/iface_poly.go /^	// If the reader/,/^	}/
+#.code iface_poly/iface_poly.go /^	// If the reader/,/^	}/
 
 * Function types
