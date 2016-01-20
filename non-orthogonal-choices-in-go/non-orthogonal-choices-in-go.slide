@@ -15,6 +15,8 @@ The minimum number of coordinates needed to describe a point in space.
 - Two dimensions—a surface—two coordinates; (x, y) or (ϕ, ρ).
 - Three dimensions—a volume—three coordinates; (x, y, z) or (length, width, depth).
 
+
+
 * Orthogonality
 
 - N orthogonal vectors describe an N-dimensional space.
@@ -22,6 +24,8 @@ The minimum number of coordinates needed to describe a point in space.
 - Basis vectors can be scaled and added to reach any point in the space they describe.
 
 .html Coord_XY.svg
+
+
 
 * Orthogonality in software
 
@@ -31,6 +35,8 @@ Software is more orthogonal when features or components are:
 - Minimal—their functionality does not overlap.
 - Composable—they are easily combined in useful ways.
 
+
+
 * Orthogonality in Go
 
 In 2010 Rob Pike listed Go's principles as:
@@ -39,6 +45,8 @@ In 2010 Rob Pike listed Go's principles as:
 - *Orthogonal*
 - Succinct
 - Safe
+
+
 
 * Is Go orthogonal?
 
@@ -51,11 +59,15 @@ Rob Pike called out the following orthogonalities in Go:
 - Concurrency orthogonal to everything else.
 - Functions orthogonal to variable location (easy closures, yay!).
 
+
+
 * But are there exceptions?
 
-* No!  —  Go doesn't have exceptions.
+* No ...
 
-* panic("talk failed")
+* ... Go doesn't have exceptions.
+
+* if laughs == 0 { panic("joke not funny") }
 
 * recover()
 
@@ -63,7 +75,9 @@ Rob Pike called out the following orthogonalities in Go:
 
 * But no practical programming language is.
 
-* Beware the Turing tarpit!
+* Beware the Turing tar-pit!
+
+
 
 * Non-orthogonality creates choices
 
@@ -71,20 +85,28 @@ Rob Pike called out the following orthogonalities in Go:
 - Not all choices are equally good.
 - Choose the right tool for the problem.
 
+
+
 * Three ways to count
 
 .code counting/counting.go /^func forloop/,/^}/
 .code counting/counting.go /^func gotoloop/,/^}/
 .code counting/counting.go /^func recurse/,/^}/
 
+
+
 * Counting three ways
 
 .play counting/counting.go /^func main/,/^}/
+
+
 
 * These are not hard choices
 
 - Choosing a looping construct is tactical.
 - The impact is almost always local to a function.
+
+
 
 * More difficult choices
 
@@ -99,19 +121,22 @@ Concurrency control
 - import "sync"
 - import "sync/atomic"
 
+
+
 * These choices are strategic
 
 - Often influence the public API, or
 - Impact many functions in the package
 - Or both
 
+
+
 * Dynamic behavior
 
-We have dynamic behavior when a function delegates some of its implementation details to other functions that are chosen at runtime.
+We have dynamic behavior when a function delegates some of its implementation to other functions that are chosen at runtime.
 
-Done well it helps reduce coupling.
-
-It provides opportunities for extension and reuse.
+- Done well it helps reduce coupling.
+- It provides opportunities for extension and reuse.
 
 Related concepts:
 
@@ -120,49 +145,63 @@ Related concepts:
 - Inversion of control
 - Strategy pattern
 
+
+
 * Dynamic behavior with an interface value
 
 .code dynamic_behavior/dynamic_behavior.go /^type StringDecoder interface/,/^}/+/^}/
 
+
+
 * StringDecoder implementations
 
-The [[https://golang.org/pkg/encoding/base32/#Encoding.DecodeString][encoding/base32]] and [[https://golang.org/pkg/encoding/base64/#Encoding.DecodeString][encoding/base64]] packages both have implementations of `StringDecoder`.
-
-We can use the [[https://golang.org/pkg/encoding/hex/#DecodeString][encoding/hex.DecodeString]] function to satisfy the interface with an adapter type as follows.
+- [[https://golang.org/pkg/encoding/base32/#Encoding.DecodeString][encoding/base32.Encoding]]
+- [[https://golang.org/pkg/encoding/base64/#Encoding.DecodeString][encoding/base64.Encoding]]
+- [[https://golang.org/pkg/encoding/hex/#DecodeString][encoding/hex.DecodeString]] combined with the following adapter type.
 
 .code dynamic_behavior/dynamic_behavior.go /^type StringDecoderFunc/,/^}/
+
+- Our own trivial implementation
+
+.code dynamic_behavior/dynamic_behavior.go /^type NopStringDecoder/,/^}/
+
+
 
 * Using the implementations
 
 .play dynamic_behavior/dynamic_behavior.go /^func main/,/^}/
 
+
+
 * Dynamic behavior with a function value
 
 .code dynamic_function/dynamic_function.go /^type StringDecoder/,/^}/
 
+
+
 * StringDecoderFunc implementations
 
-[[https://golang.org/pkg/encoding/hex/#DecodeString][encoding/hex.DecodeString]] matches the `StringDecoder` function type.
+- Use _method_values_ to convert [[https://golang.org/pkg/encoding/base32/#Encoding.DecodeString][encoding/base32]] and [[https://golang.org/pkg/encoding/base64/#Encoding.DecodeString][encoding/base64]] methods to function values
+- [[https://golang.org/pkg/encoding/hex/#DecodeString][encoding/hex.DecodeString]] matches without extra work.
+- _Function_literals_ allow us to pass a locally declared anonymous function.
 
-We can use _method_values_ to convert the [[https://golang.org/pkg/encoding/base32/#Encoding.DecodeString][encoding/base32]] and [[https://golang.org/pkg/encoding/base64/#Encoding.DecodeString][encoding/base64]] `DecodeString` methods to function values.
 
-Finally, _function_literals_ allow us to pass a locally declared anonymous function.
 
 * Using the functions
 
 .play dynamic_function/dynamic_function.go /^func main/,/^}/
 
+
+
 * Choices
 
-Interfaces and function values both provide dynamic behavior.
+- Interfaces and function values both provide dynamic behavior.
+- Which should we use?
+- When?
 
-Which should we use?
 
-When?
 
-* Differences
-
-The differences between interface and function values inform our choice.
+* Differences between interface and function values help us choose
 
 Interface values:
 
@@ -176,13 +215,53 @@ Function values:
 
 - Can have only one behavior
 - May have state via a closure
-- Can be declared inline with a function literal
+- Can be declared in-line with a function literal
 - Accept functions and method values without boilerplate
 
-* Informed choices
+
+
+* Case study
+
+[[https://golang.org/pkg/bufio/#Scanner][bufio.Scanner]] uses both interface and function values.
+
+Constructor accepts an `io.Reader` interface value.
+
+	func NewScanner(r io.Reader) *Scanner
+
+Split method accepts custom split behavior via a function value.
+
+	func (s *Scanner) Split(split SplitFunc)
+
+	type SplitFunc func(data []byte, atEOF bool) (advance int, token []byte, err error)
+
+Why were these choices made?
+
+
+
+* bufio.Scanner design
+
+Much of the [[https://groups.google.com/d/msg/golang-nuts/QiR85Z1W6fc/870wtfwP2q0J][design discussion]] took place publicly on Google Groups.
+
+NewScanner:
+
+- Originally took an `io.ReadCloser`
+- No question that it should take an interface
+
+Split:
+
+- Several suggestions that it should take an interface
+- Debate focused on the expected statefulness of implementations
+- If typically stateful, then interface
+- If not, then function
+- `SplitFunc` was redesigned to minimize the need for implementations to keep state
+
+
+
+* Informed choices for dynamic behavior
 
 Use interface values when:
 
+- Well known interfaces already exist, e.g. `io.Reader`
 - More than one behavior required
 - Typically stateful
 - Implementations non-trivial
@@ -191,22 +270,4 @@ Use function values when:
 
 - Only one behavior
 - Typically stateless
-- To enable inline implementations
-
-* Case study
-
-bufio.Scanner
-
-# .play iface_poly/iface_poly.go /^func main/,/^func mustOpen/
-
-* ioCopy(dst io.Writer, src io.Reader) (written int64, err error)
-
-#.code iface_poly/iface_poly.go /^	buf :=/,/^	return/
-
-* ioCopy(dst io.Writer, src io.Reader) (written int64, err error)
-
-An optimization
-
-#.code iface_poly/iface_poly.go /^	// If the reader/,/^	}/
-
-* Function types
+- In-line implementations typical

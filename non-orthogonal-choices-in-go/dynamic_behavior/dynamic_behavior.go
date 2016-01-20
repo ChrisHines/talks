@@ -22,6 +22,16 @@ func main() {
 	const filehex = "dynamic_behavior/GoSpec-hex.txt"
 	c = CountEncodedWords(readLines(filehex), "go", StringDecoderFunc(hex.DecodeString)) // HL
 	fmt.Println(c, filehex)
+
+	const fileraw = "/Go/doc/go_spec.html"
+	c = CountEncodedWords(readLines(fileraw), "go", NopStringDecoder{}) // HL
+	fmt.Println(c, fileraw)
+}
+
+type NopStringDecoder struct{}
+
+func (NopStringDecoder) DecodeString(s string) ([]byte, error) {
+	return []byte(s), nil
 }
 
 type StringDecoderFunc func(s string) ([]byte, error)
