@@ -23,7 +23,7 @@ The minimum number of coordinates needed to describe a point in space.
 - Orthogonal vectors are linearly independent—none of them can be built from a combination of the others.
 - Basis vectors can be scaled and added to reach any point in the space they describe.
 
-.html Coord_XY.svg
+.image Coord_XY.svg.png 350 _
 
 
 
