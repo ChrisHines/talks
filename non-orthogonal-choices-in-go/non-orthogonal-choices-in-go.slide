@@ -107,20 +107,97 @@ Concurrency control
 
 * Dynamic behavior
 
-Choose functions at runtime
+We have dynamic behavior when a function delegates some of its implementation details to other functions that are chosen at runtime.
 
-- Inversion of control
-- Polymorphism
+Done well it helps reduce coupling.
+
+It provides opportunities for extension and reuse.
+
+Related concepts:
+
 - Dynamic dispatch
+- Polymorphism
+- Inversion of control
 - Strategy pattern
 
-Helps reduce coupling
+* Dynamic behavior with an interface value
 
-Provides opportunities for extension and reuse
+.code dynamic_behavior/dynamic_behavior.go /^type StringDecoder interface/,/^}/+/^}/
 
-* Interfaces
+* StringDecoder implementations
 
-.play iface_poly/iface_poly.go /^func main/,/^func mustOpen/
+The [[https://golang.org/pkg/encoding/base32/#Encoding.DecodeString][encoding/base32]] and [[https://golang.org/pkg/encoding/base64/#Encoding.DecodeString][encoding/base64]] packages both have implementations of `StringDecoder`.
+
+We can use the [[https://golang.org/pkg/encoding/hex/#DecodeString][encoding/hex.DecodeString]] function to satisfy the interface with an adapter type as follows.
+
+.code dynamic_behavior/dynamic_behavior.go /^type StringDecoderFunc/,/^}/
+
+* Using the implementations
+
+.play dynamic_behavior/dynamic_behavior.go /^func main/,/^}/
+
+* Dynamic behavior with a function value
+
+.code dynamic_function/dynamic_function.go /^type StringDecoder/,/^}/
+
+* StringDecoderFunc implementations
+
+[[https://golang.org/pkg/encoding/hex/#DecodeString][encoding/hex.DecodeString]] matches the `StringDecoder` function type.
+
+We can use _method_values_ to convert the [[https://golang.org/pkg/encoding/base32/#Encoding.DecodeString][encoding/base32]] and [[https://golang.org/pkg/encoding/base64/#Encoding.DecodeString][encoding/base64]] `DecodeString` methods to function values.
+
+Finally, _function_literals_ allow us to pass a locally declared anonymous function.
+
+* Using the functions
+
+.play dynamic_function/dynamic_function.go /^func main/,/^}/
+
+* Choices
+
+Interfaces and function values both provide dynamic behavior.
+
+Which should we use?
+
+When?
+
+* Differences
+
+The differences between interface and function values inform our choice.
+
+Interface values:
+
+- Can have more than one method
+- May have state stored in dynamic value
+- Can be inspected for additional behaviors with type assertions
+- Require an implementation declared elsewhere
+- Require an adapter type to accept functions
+
+Function values:
+
+- Can have only one behavior
+- May have state via a closure
+- Can be declared inline with a function literal
+- Accept functions and method values without boilerplate
+
+* Informed choices
+
+Use interface values when:
+
+- More than one behavior required
+- Typically stateful
+- Implementations non-trivial
+
+Use function values when:
+
+- Only one behavior
+- Typically stateless
+- To enable inline implementations
+
+* Case study
+
+bufio.Scanner
+
+# .play iface_poly/iface_poly.go /^func main/,/^func mustOpen/
 
 * ioCopy(dst io.Writer, src io.Reader) (written int64, err error)
 
