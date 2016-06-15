@@ -1,0 +1,173 @@
+fmt.Formatter
+15 Jun 2016
+
+Chris Hines
+chris@cs-guy.com
+@chris_csguy
+
+
+
+* fmt.Println
+
+Println formats using the *default*formats* for its operands.
+
+.play code/basic_fmt.go /^type/,$
+
+
+
+* fmt.Printf
+
+Printf formats according to a [[https://golang.org/pkg/fmt/#pkg-overview][format specifier]].
+
+	%[flags][width][.precision]<verb>
+
+For example
+
+	%+5d
+
+Commonly used verbs
+
+	%v   the value in a default format
+	%s   string
+	%d   integer, base 10
+	%f   floating point, decimal point but no exponent
+
+
+
+* %v — Default Format
+
+The default format for %v is:
+
+	bool:                    %t
+	int, int8 etc.:          %d
+	uint, uint8 etc.:        %d, %x if printed with %#v
+	float32, complex64, etc: %g
+	string:                  %s
+	chan:                    %p
+	pointer:                 %p
+
+For compound objects, the elements are printed using these rules, recursively, laid out like this:
+
+	struct:             {field0 field1 ...}
+	array, slice:       [elem0  elem1 ...]
+	maps:               map[key1:value1 key2:value2]
+	pointer to above:   &{}, &[], &map[]
+
+
+
+* %v — Examples
+
+.play code/printf.go /^type/,$
+
+
+
+* Formatting Flags
+
+	+   always print a sign for numeric values;
+		guarantee ASCII-only output for %q (%+q)
+	-   pad with spaces on the right rather than the left (left-justify the field)
+	#   alternate format: add leading 0 for octal (%#o), 0x for hex (%#x);
+		0X for hex (%#X); suppress 0x for %p (%#p);
+		for %q, print a raw (backquoted) string if strconv.CanBackquote
+		returns true;
+		write e.g. U+0078 'x' if the character is printable for %U (%#U).
+	' ' (space) leave a space for elided sign in numbers (% d);
+		put spaces between bytes printing strings or slices in hex (% x, % X)
+	0   pad with leading zeros rather than spaces;
+		for numbers, this moves the padding after the sign
+
+When printing structs, the plus flag (%+v) adds field names.
+
+
+
+* The + Flag
+
+.play code/flags.go /^type/,$
+
+
+
+* Special Rules
+
+1. A `reflect.Value` formats as the concrete value that it holds.
+
+2. Use `Format` method if the value implements `fmt.Formatter`.
+
+3. Use `GoString` method for the `%#v` format if the value implements `fmt.GoStringer`.
+
+4. Use `Error` method for string verbs if the value implements `error`.
+
+5. Use `String` method for string verbs if the value implements `fmt.Stringer`.
+
+
+
+* Special Rules — Simple Examples
+
+.play code/ifaces.go /^type/,$
+
+
+
+* fmt.Formatter
+
+	type Formatter interface {
+		Format(f State, c rune)
+	}
+
+fmt.State
+
+	type State interface {
+		// Write is the function to call to emit formatted output to be printed.
+		Write(b []byte) (ret int, err error)
+
+		// Width returns the value of the width option and whether it has been set.
+		Width() (wid int, ok bool)
+
+		// Precision returns the value of the precision option and whether it has been set.
+		Precision() (prec int, ok bool)
+	
+		// Flag reports whether the flag c, a character, has been set.
+		Flag(c int) bool
+	}
+
+
+
+* fmt.Formatter — Example
+
+.code code/formatter.go /^type/,/^}/+/^}/
+
+
+
+* fmt.Formatter — Example
+
+.play code/formatter.go /^func main/,$
+
+
+
+* fmt.Formatter — Pizza
+
+.play code/pizza.go /^func main/,$
+
+
+
+* Real World Uses
+
+math/big
+
+- [[https://golang.org/pkg/math/big/#Float.Format][big.Float]]
+- [[https://golang.org/pkg/math/big/#Int.Format][big.Int]]
+
+github.com/go-stack/stack
+
+- [[https://godoc.org/github.com/go-stack/stack#Call.Format][stack.Call]]
+- [[https://godoc.org/github.com/go-stack/stack#CallStack.Format][stack.CallStack]]
+
+github.com/pkg/errors
+
+- [[http://dave.cheney.net/2016/06/12/stack-traces-and-the-errors-package][Blog post]]
+- errors.Frame & errors.StackTrace similar to the above package.
+- [[https://godoc.org/github.com/pkg/errors#hdr-Formatted_printing_of_errors][Wrapped errors]]
+
+
+
+* Examples
+
+.play code/stack-errors.go /^func main/,$
